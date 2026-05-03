@@ -1,68 +1,40 @@
 name: Enterprise Android Build
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+on: [push]
 env:
-  JAVA_VERSION: '17'
-  NDK_VERSION: '21.4.7075529'
-  GRADLE_OPTS: '-Xmx2g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true'
-
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Supres warning Node.js 20 secara resmi
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    
+    timeout-minutes: 25
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
-    - name: Setup Java
+    - name: Setup JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: ${{ env.JAVA_VERSION }}
+        java-version: '17'
         distribution: 'temurin'
         cache: gradle
 
-    - name: Setup Android SDK
+    - name: Setup Android SDK & Accept Licenses
       uses: android-actions/setup-android@v3
       with:
-        api-level: 34
-        build-tools: 34.0.0
-        ndk-version: ${{ env.NDK_VERSION }}
-        packages: 'platforms;android-34 build-tools;34.0.0 ndk;${{ env.NDK_VERSION }}'
+        accept-android-sdk-licenses: true
 
-    - name: Configure Environment
+    - name: Install Required Components
       run: |
-        echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+        sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;21.4.7075529" --sdk_root=$ANDROID_HOME > /dev/null 2>&1
         echo "sdk.dir=$ANDROID_HOME" >> local.properties
-        echo "ndk.dir=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> local.properties
+        echo "ndk.dir=$ANDROID_HOME/ndk/21.4.7075529" >> local.properties
         chmod +x gradlew
-        echo "Environment configured successfully"
-
-    - name: Validate Setup
-      run: |
-        echo "Java version:"
-        java -version
-        echo "Android SDK:"
-        echo $ANDROID_HOME
-        echo "NDK Path:"
-        ls -la $ANDROID_NDK_HOME
-        echo "Gradle wrapper:"
-        ls -la gradlew
 
     - name: Build APK
-      run: ./gradlew assembleDebug -x lint -x test --info --stacktrace
+      run: ./gradlew assembleDebug -x lint -x test --stacktrace
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
-      if: success()
       with:
         name: NexusTerm-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: app/build/outputs/apk/debug/*.apk
         retention-days: 30
