@@ -18,7 +18,7 @@ jobs:
         cache: gradle
 
     - name: Setup Android SDK & Accept Licenses
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4
       with:
         accept-android-sdk-licenses: true
 
